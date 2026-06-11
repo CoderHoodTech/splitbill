@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 760" font-family="'Courier New', monospace">
+  <defs>
+    <style>
+      .title { font-family: Georgia, serif; font-weight: 700; }
+      .lbl { font-size: 13px; fill: #1a2b3c; }
+      .sub { font-size: 11px; fill: #5a6b7c; }
+      .pin { font-size: 11px; fill: #b34700; font-weight: 700; }
+      .note { font-size: 11px; fill: #44607a; }
+      .flow { stroke: #2c5d7c; stroke-width: 2; fill: none; }
+      .flowdash { stroke: #b34700; stroke-width: 2; stroke-dasharray: 6 4; fill: none; }
+    </style>
+    <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#2c5d7c"/>
+    </marker>
+    <marker id="arro" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#b34700"/>
+    </marker>
+  </defs>
+
+  <rect width="1100" height="760" fill="#f4f1ea"/>
+  <text x="40" y="46" class="title" font-size="26" fill="#1a2b3c">SplitBill — Arsitektur Lokal</text>
+  <text x="40" y="68" class="sub">2 proses jalan bareng di Windows-mu. Satu-satunya jembatan Laravel ↔ Python adalah HTTP.</text>
+
+  <!-- Outer machine box -->
+  <rect x="40" y="90" width="1020" height="630" rx="10" fill="none" stroke="#1a2b3c" stroke-width="1.5"/>
+  <text x="58" y="114" class="sub" font-style="italic">YOUR WINDOWS PC  (localhost)</text>
+
+  <!-- Clients -->
+  <rect x="70" y="135" width="250" height="70" rx="8" fill="#fff" stroke="#2c5d7c"/>
+  <text x="86" y="162" class="lbl" font-weight="700">Browser (Chrome)</text>
+  <text x="86" y="182" class="sub">http://localhost:8000</text>
+  <text x="86" y="197" class="sub">Livewire / Blade (web app)</text>
+
+  <rect x="760" y="135" width="270" height="70" rx="8" fill="#fff" stroke="#b34700"/>
+  <text x="776" y="162" class="lbl" font-weight="700">Flutter app (nanti)</text>
+  <text x="776" y="182" class="sub">emulator / HP di Wi-Fi sama</text>
+  <text x="776" y="197" class="pin">JSON + Bearer token (Sanctum)</text>
+
+  <!-- Laravel box -->
+  <rect x="70" y="255" width="960" height="210" rx="10" fill="#eaf0f4" stroke="#2c5d7c" stroke-width="1.5"/>
+  <text x="90" y="282" class="lbl" font-weight="700" font-size="15">LARAVEL 13 APP — PHP 8.3, port 8000</text>
+
+  <rect x="95" y="298" width="300" height="48" rx="6" fill="#fff" stroke="#9bb3c4"/>
+  <text x="110" y="318" class="lbl">Livewire components</text>
+  <text x="110" y="335" class="sub">UI web (tipis: validasi → Action)</text>
+
+  <rect x="630" y="298" width="380" height="48" rx="6" fill="#fff" stroke="#9bb3c4"/>
+  <text x="645" y="318" class="lbl">API controllers  /api/v1/...</text>
+  <text x="645" y="335" class="sub">Phase 6 (tipis: validasi → Action → Resource)</text>
+
+  <rect x="95" y="360" width="915" height="44" rx="6" fill="#fff7ee" stroke="#b34700"/>
+  <text x="110" y="380" class="lbl" font-weight="700">ACTIONS — business logic (dipakai bareng web + API)</text>
+  <text x="110" y="397" class="sub">friends · groups · expenses · CalculateShares / Balances / SimplifyDebts · ScanReceipt</text>
+
+  <rect x="95" y="416" width="300" height="38" rx="6" fill="#fff" stroke="#9bb3c4"/>
+  <text x="110" y="439" class="lbl">Eloquent Models</text>
+
+  <!-- Data + OCR -->
+  <rect x="150" y="520" width="280" height="120" rx="10" fill="#fff" stroke="#2c5d7c"/>
+  <text x="170" y="548" class="lbl" font-weight="700">SQLite</text>
+  <text x="170" y="570" class="sub">database/database.sqlite</text>
+  <text x="170" y="592" class="note">Dev &amp; production awal.</text>
+  <text x="170" y="610" class="note">Pindah MariaDB nanti =</text>
+  <text x="170" y="626" class="note">ganti .env saja.</text>
+
+  <rect x="640" y="520" width="330" height="120" rx="10" fill="#fff7ee" stroke="#b34700"/>
+  <text x="660" y="548" class="lbl" font-weight="700">PYTHON OCR SERVICE</text>
+  <text x="660" y="570" class="sub">FastAPI + Uvicorn — port 8001</text>
+  <text x="660" y="590" class="sub">POST /ocr   ·   GET /health</text>
+  <text x="660" y="612" class="pin">engine: Tesseract(ind) → RapidOCR</text>
+  <text x="660" y="630" class="note">bind 127.0.0.1 saja (tidak publik)</text>
+
+  <!-- Flows -->
+  <!-- browser -> laravel -->
+  <path class="flow" d="M195,205 L195,255" marker-end="url(#arr)"/>
+  <!-- flutter -> api -->
+  <path class="flowdash" d="M820,205 L820,298" marker-end="url(#arro)"/>
+  <!-- livewire -> actions -->
+  <path class="flow" d="M245,346 L245,360" marker-end="url(#arr)"/>
+  <!-- api -> actions -->
+  <path class="flow" d="M820,346 L820,360" marker-end="url(#arr)"/>
+  <!-- actions -> models -->
+  <path class="flow" d="M245,404 L245,416" marker-end="url(#arr)"/>
+  <!-- models -> sqlite -->
+  <path class="flow" d="M260,454 L280,520" marker-end="url(#arr)"/>
+  <!-- ScanReceipt action -> OCR (HTTP) -->
+  <path class="flowdash" d="M760,382 C 850,440 805,470 805,518" marker-end="url(#arro)"/>
+  <text x="828" y="470" class="pin">HTTP multipart</text>
+  <text x="828" y="486" class="pin">(gambar struk)</text>
+
+  <!-- run commands footer -->
+  <rect x="70" y="666" width="960" height="40" rx="8" fill="#1a2b3c"/>
+  <text x="90" y="685" fill="#f4f1ea" font-size="12">Terminal 1:  composer run dev   (Laravel+Vite :8000)</text>
+  <text x="90" y="700" fill="#f4f1ea" font-size="12">Terminal 2:  uvicorn main:app --port 8001   (OCR)        Terminal 3 (opsional):  claude</text>
+
+  <text x="40" y="744" class="sub" font-style="italic">Garis solid = panggilan internal. Garis putus oranye = batas HTTP (engine OCR bisa diganti tanpa ubah Laravel).</text>
+</svg>
