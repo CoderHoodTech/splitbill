@@ -54,8 +54,9 @@ curl http://127.0.0.1:8001/health
 ## Endpoints
 
 ### `GET /health`
-Returns `{"status":"ok","engine":"<name>"}`. Used by Laravel to detect that
-the service is reachable before forwarding an image.
+Returns `{"status":"ok","engine":"<name>","fallback_engine":"<name>|null"}`.
+Used by Laravel to detect that the service is reachable before forwarding
+an image.
 
 ### `POST /ocr`
 Multipart upload with field `file` (image, ≤ 5 MB). Response shape
@@ -85,6 +86,26 @@ to RapidOCR later:
 4. `OCR_ENGINE=rapidocr uvicorn main:app ...`.
 
 The `/ocr` JSON contract stays identical — no Laravel changes.
+
+## Cloud fallback (Gemini)
+
+Tesseract stays the default, offline, free engine (rule 03). If you want a
+safety net for when Tesseract fails to recognize a photo (or isn't
+installed at all), set a Gemini API key:
+
+```powershell
+$env:GEMINI_API_KEY = "your-key-from-aistudio.google.com"
+# optional, defaults to gemini-2.0-flash
+$env:GEMINI_MODEL = "gemini-2.0-flash"
+```
+
+With `GEMINI_API_KEY` unset (the default), the service behaves exactly as
+before — 100% local, no outbound calls. With it set, `/ocr` only calls
+Gemini when the primary engine's `recognize()` raises (missing Tesseract
+binary, decode failure, etc.) — a healthy local scan never touches the
+network. The response's `"engine"` field reports whichever engine actually
+produced the text (`"tesseract"` or `"gemini"`), so Laravel/tests can tell
+which one served a given request.
 
 ## Privacy / ops
 

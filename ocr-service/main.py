@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 
-from engine import build_engine
+from engine import build_engine, build_fallback_engine
 from parser import parse_receipt
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # Mirror Laravel-side limit (rule 03).
@@ -19,11 +19,16 @@ ALLOWED_MIME_PREFIX = "image/"
 
 app = FastAPI(title="SplitBill OCR", version="1.0.0")
 _engine = build_engine()
+_fallback_engine = build_fallback_engine()
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok", "engine": _engine.name}
+def health() -> dict[str, str | None]:
+    return {
+        "status": "ok",
+        "engine": _engine.name,
+        "fallback_engine": _fallback_engine.name if _fallback_engine else None,
+    }
 
 
 @app.post("/ocr")
@@ -39,8 +44,18 @@ async def ocr(file: UploadFile = File(...)) -> dict:
 
     try:
         raw_text = _engine.recognize(body)
-    except Exception as exc:  # pragma: no cover - engine error path
-        raise HTTPException(status_code=500, detail=f"OCR failed: {exc}") from exc
+        engine_used = _engine.name
+    except Exception as primary_exc:  # pragma: no cover - engine error path
+        if _fallback_engine is None:
+            raise HTTPException(status_code=500, detail=f"OCR failed: {primary_exc}") from primary_exc
+        try:
+            raw_text = _fallback_engine.recognize(body)
+            engine_used = _fallback_engine.name
+        except Exception as fallback_exc:
+            raise HTTPException(
+                status_code=500,
+                detail=f"OCR failed: primary={primary_exc}; fallback={fallback_exc}",
+            ) from fallback_exc
 
     parsed = parse_receipt(raw_text)
 
@@ -48,5 +63,5 @@ async def ocr(file: UploadFile = File(...)) -> dict:
         "raw_text": raw_text,
         "total_guess": parsed.total_guess,
         "line_items": [{"name": i.name, "amount": i.amount} for i in parsed.line_items],
-        "engine": _engine.name,
+        "engine": engine_used,
     }

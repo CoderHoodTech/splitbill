@@ -7,11 +7,13 @@ RapidOCR (ONNX). The contract is purely "bytes in -> raw_text out".
 
 from __future__ import annotations
 
+import base64
 import io
 import os
 import shutil
 from typing import Protocol
 
+import requests
 from PIL import Image, ImageOps
 
 import pytesseract
@@ -81,8 +83,57 @@ class TesseractEngine:
             return pytesseract.image_to_string(img, lang=self.lang)
 
 
+class GeminiEngine:
+    """Cloud fallback via Google Gemini's vision API.
+
+    Not the default (rule 03: Tesseract is the free, offline-first engine).
+    This only runs when `GEMINI_API_KEY` is set AND the primary engine raised
+    (e.g. Tesseract binary missing, or recognition errored) — see
+    `build_fallback_engine` and its use in `main.py`.
+    """
+
+    name = "gemini"
+
+    _ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    _PROMPT = (
+        "Transcribe every line of text visible on this Indonesian retail "
+        "receipt (struk) exactly as printed, preserving line breaks and "
+        "number formatting (e.g. 25.000, not 25000 or 25,000). "
+        "Return plain text only, no commentary."
+    )
+
+    def __init__(self, api_key: str, model: str = "gemini-2.0-flash") -> None:
+        self.api_key = api_key
+        self.model = model
+
+    def recognize(self, image_bytes: bytes) -> str:
+        response = requests.post(
+            self._ENDPOINT.format(model=self.model),
+            params={"key": self.api_key},
+            json={
+                "contents": [
+                    {
+                        "parts": [
+                            {"text": self._PROMPT},
+                            {
+                                "inline_data": {
+                                    "mime_type": "image/jpeg",
+                                    "data": base64.b64encode(image_bytes).decode("ascii"),
+                                }
+                            },
+                        ]
+                    }
+                ]
+            },
+            timeout=20,
+        )
+        response.raise_for_status()
+        data = response.json()
+        return data["candidates"][0]["content"]["parts"][0]["text"]
+
+
 def build_engine() -> OcrEngine:
-    """Build the engine declared in OCR_ENGINE env (default: tesseract).
+    """Build the primary engine declared in OCR_ENGINE env (default: tesseract).
 
     Adding a new engine = add an `elif` and ship the import inside the
     branch so optional deps stay optional.
@@ -101,3 +152,17 @@ def build_engine() -> OcrEngine:
         )
 
     raise RuntimeError(f"Unknown OCR_ENGINE: {name!r}")
+
+
+def build_fallback_engine() -> OcrEngine | None:
+    """Build the optional Gemini fallback, or None if not configured.
+
+    Opt-in only: unset `GEMINI_API_KEY` and the service stays fully local +
+    offline, matching rule 03. Set it to let `/ocr` retry against Gemini
+    when the primary engine (Tesseract) fails.
+    """
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        return None
+
+    return GeminiEngine(api_key=api_key, model=os.environ.get("GEMINI_MODEL", "gemini-2.0-flash"))
